@@ -1,12 +1,12 @@
 from __future__ import print_function
 import httplib2
 import os
-
+from secret import *
 from apiclient import discovery
 from oauth2client import client
 from oauth2client import tools
 from oauth2client.file import Storage
-
+import requests
 import datetime
 
 try:
@@ -71,8 +71,43 @@ def get_locations():
         print('No upcoming events found.')
 
     location = events[0]['location']
+    if not location:
+        print('No upcoming locations found.')
     return location
 
 
+def get_latitud_longitude(address):
+    """Basic usage of the Google Maps requests.
+
+    This function returns a tuple with the latitude and longitude of the addres of the next event.
+    """
+
+    url = 'https://maps.googleapis.com/maps/api/geocode/json'
+    params = {'sensor': 'false', 'address': address}
+    r = requests.get(url, params=params)
+    results = r.json()['results']
+    location = results[0]['geometry']['location']
+    print((location['lat'], location['lng']))
+    return (location['lat'], location['lng'])
+
+
+def get_geocodes_home():
+    """Basic usage of the Google Maps requests.
+
+    This function returns a tuple with the latitude and longitude of my home.
+    """
+
+    url = 'https://maps.googleapis.com/maps/api/geocode/json'
+    params = {'sensor': 'false', 'address': address_home}
+    r = requests.get(url, params=params)
+    results = r.json()['results']
+    location = results[0]['geometry']['location']
+    print((location['lat'], location['lng']))
+    return (location['lat'], location['lng'])
+
+
 if __name__ == '__main__':
-    get_locations()
+    address = get_locations()
+    print(address)
+    get_latitud_longitude(address)
+    get_geocodes_home()
