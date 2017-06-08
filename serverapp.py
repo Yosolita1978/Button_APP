@@ -70,10 +70,16 @@ def get_locations():
     if not events:
         print('No upcoming events found.')
 
-    location = events[0]['location']
-    if not location:
-        print('No upcoming locations found.')
-    return location
+    if not 'location' in events[0]:
+        #print("Next event doesn't have a location")
+        return None
+
+    else:
+        location = events[0]['location']
+        if not location:
+            print('No upcoming locations found.')
+    
+        return location
 
 
 def get_latitud_longitude(address):
@@ -108,6 +114,10 @@ def get_geocodes_home():
 
 if __name__ == '__main__':
     address = get_locations()
-    print(address)
-    get_latitud_longitude(address)
-    get_geocodes_home()
+    if not address:
+        print("Sorry, your next event doesn't have an address")
+
+    else:
+        print(address)
+        get_latitud_longitude(address)
+        get_geocodes_home()
