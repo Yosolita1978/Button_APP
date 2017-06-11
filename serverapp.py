@@ -8,6 +8,11 @@ from oauth2client import tools
 from oauth2client.file import Storage
 import requests
 import datetime
+from lyft_rides.auth import AuthorizationCodeGrant
+from lyft_rides.client import LyftRidesClient
+from lyft_rides.session import Session
+from lyft_rides.session import OAuth2Credential
+import json
 
 try:
     import argparse
@@ -77,8 +82,7 @@ def get_locations():
     else:
         location = events[0]['location']
         if not location:
-            print('No upcoming locations found.')
-    
+            print('No upcoming locations found.')   
         return location
 
 
@@ -93,6 +97,7 @@ def get_latitud_longitude(address):
     r = requests.get(url, params=params)
     results = r.json()['results']
     location = results[0]['geometry']['location']
+    print(address)
     print((location['lat'], location['lng']))
     return (location['lat'], location['lng'])
 
@@ -108,16 +113,84 @@ def get_geocodes_home():
     r = requests.get(url, params=params)
     results = r.json()['results']
     location = results[0]['geometry']['location']
+    print(address_home)
     print((location['lat'], location['lng']))
     return (location['lat'], location['lng'])
 
 
+def get_user_credentials_from_file():
+
+    with open("lyft_secret.json", 'r') as f:
+        credential = json.loads(f.read())
+
+    return OAuth2Credential(**credential)
+
+
+def get_user_credentials_from_oauth_flow():
+
+    PERMISSION_SCOPES = ['public', 'rides.read', 'offline', 'rides.request', 'profile']
+
+    auth_flow = AuthorizationCodeGrant(CLIENT_ID, CLIENT_SECRET, PERMISSION_SCOPES)
+    auth_url = auth_flow.get_authorization_url()
+    print(auth_url)
+    redirect_url = raw_input("Please type here the redirect url: ")
+
+    session = auth_flow.get_session(redirect_url)
+    credential = session.oauth2credential
+
+    credential_data = {
+        'client_id': credential.client_id,
+        'access_token': credential.access_token,
+        'expires_in_seconds': credential.expires_in_seconds,
+        'scopes': list(credential.scopes),
+        'grant_type': credential.grant_type,
+        'client_secret': credential.client_secret,
+        'refresh_token': credential.refresh_token,
+    }
+
+    with open("lyft_secret.json", 'w') as f:
+        f.write(json.dumps(credential_data))
+
+    return credential
+
+
+def get_lyft_client():
+
+    try:
+        credential = get_user_credentials_from_file()
+
+    except IOError:
+        credential = get_user_credentials_from_oauth_flow()
+
+    session = Session(oauth2credential=credential)
+    return LyftRidesClient(session)
+
+
 if __name__ == '__main__':
-    address = get_locations()
-    if not address:
+    home = get_geocodes_home()
+    latitude_home = home[0]
+    longitude_home = home[1]
+
+    myclient = get_lyft_client()
+    response = myclient.get_ride_types(home[0], home[1])
+    ride_types = response.json.get('ride_types')
+    my_ride_type = ride_types[1]['ride_type']
+
+    next_event = get_locations()
+    if not next_event:
         print("Sorry, your next event doesn't have an address")
 
     else:
-        print(address)
-        get_latitud_longitude(address)
-        get_geocodes_home()
+        address = get_latitud_longitude(next_event)
+        final_latitud = address[0]
+        final_longitud = address[1]
+
+        response = myclient.request_ride(
+            ride_type=my_ride_type,
+            start_latitude=latitude_home,
+            start_longitude=longitude_home,
+            end_latitude=final_latitud,
+            end_longitude=final_longitud)
+
+        ride_details = response.json
+        print(ride_details)
