@@ -12,6 +12,7 @@ from lyft_rides.auth import AuthorizationCodeGrant
 from lyft_rides.client import LyftRidesClient
 from lyft_rides.session import Session
 from lyft_rides.session import OAuth2Credential
+from lyft_rides.errors import ClientError
 from send_sms import send_SMS
 import json
 
@@ -168,35 +169,41 @@ def get_lyft_client():
 
 
 if __name__ == '__main__':
-    home = get_geocodes_home()
-    latitude_home = home[0]
-    longitude_home = home[1]
+    try:
+        home = get_geocodes_home()
+        latitude_home = home[0]
+        longitude_home = home[1]
 
-    myclient = get_lyft_client()
-    response = myclient.get_ride_types(home[0], home[1])
-    ride_types = response.json.get('ride_types')
-    my_ride_type = ride_types[1]['ride_type']
+        myclient = get_lyft_client()
+        response = myclient.get_ride_types(home[0], home[1])
+        ride_types = response.json.get('ride_types')
+        my_ride_type = ride_types[1]['ride_type']
 
-    next_event = get_locations()
-    if not next_event:
-        print("Sorry, your next event doesn't have an address")
+        next_event = get_locations()
+        if not next_event:
+            message = "Sorry, your next event doesn't have an address. Please, check you're calendar"
+            print(send_SMS(message))
 
-    else:
-        address = get_latitud_longitude(next_event)
-        final_latitud = address[0]
-        final_longitud = address[1]
+        else:
+            address = get_latitud_longitude(next_event)
+            final_latitud = address[0]
+            final_longitud = address[1]
 
-        response = myclient.request_ride(
-            ride_type=my_ride_type,
-            start_latitude=latitude_home,
-            start_longitude=longitude_home,
-            end_latitude=final_latitud,
-            end_longitude=final_longitud)
+            response = myclient.request_ride(
+                ride_type=my_ride_type,
+                start_latitude=latitude_home,
+                start_longitude=longitude_home,
+                end_latitude=final_latitud,
+                end_longitude=final_longitud)
 
-        ride_details = response.json
-        lyft = ride_details['ride_type']
-        lyft_id = ride_details['ride_id']
-        message = "Your %s with the id %s has been authorized" % (lyft, lyft_id)
+            ride_details = response.json
+            lyft = ride_details['ride_type']
+            lyft_id = ride_details['ride_id']
+            message = "Your %s with the id %s has been authorized" % (lyft, lyft_id)
+            print(send_SMS(message))
+
+    except ClientError:
+        message = "The access token from lyft expired"
         print(send_SMS(message))
 
 
