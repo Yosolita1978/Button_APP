@@ -12,6 +12,7 @@ from lyft_rides.auth import AuthorizationCodeGrant
 from lyft_rides.client import LyftRidesClient
 from lyft_rides.session import Session
 from lyft_rides.session import OAuth2Credential
+from send_sms import send_SMS
 import json
 
 try:
@@ -193,4 +194,9 @@ if __name__ == '__main__':
             end_longitude=final_longitud)
 
         ride_details = response.json
-        print(ride_details)
+        lyft = ride_details['ride_type']
+        lyft_id = ride_details['ride_id']
+        message = "Your %s with the id %s has been authorized" % (lyft, lyft_id)
+        print(send_SMS(message))
+
+
