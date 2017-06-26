@@ -120,10 +120,23 @@ def get_geocodes_home():
     return (location['lat'], location['lng'])
 
 
-def get_user_credentials_from_file():
+def load_from_storage():
 
     with open("lyft_secret.json", 'r') as f:
         credential = json.loads(f.read())
+
+    return credential
+
+
+def save_to_storage(credential_data):
+
+    with open("lyft_secret.json", 'w') as f:
+        f.write(json.dumps(credential_data))
+
+
+def get_user_credentials_from_file():
+
+    credential = load_from_storage()
 
     return OAuth2Credential(**credential)
 
@@ -140,19 +153,6 @@ def get_user_credentials_from_oauth_flow():
     session = auth_flow.get_session(redirect_url)
     credential = session.oauth2credential
 
-    credential_data = {
-        'client_id': credential.client_id,
-        'access_token': credential.access_token,
-        'expires_in_seconds': credential.expires_in_seconds,
-        'scopes': list(credential.scopes),
-        'grant_type': credential.grant_type,
-        'client_secret': credential.client_secret,
-        'refresh_token': credential.refresh_token,
-    }
-
-    with open("lyft_secret.json", 'w') as f:
-        f.write(json.dumps(credential_data))
-
     return credential
 
 
@@ -165,7 +165,24 @@ def get_lyft_client():
         credential = get_user_credentials_from_oauth_flow()
 
     session = Session(oauth2credential=credential)
-    return LyftRidesClient(session)
+    client = LyftRidesClient(session)
+
+    client.refresh_oauth_credential()
+
+    credential = session.oauth2credential
+    credential_data = {
+        'client_id': credential.client_id,
+        'access_token': credential.access_token,
+        'expires_in_seconds': credential.expires_in_seconds,
+        'scopes': list(credential.scopes),
+        'grant_type': credential.grant_type,
+        'client_secret': credential.client_secret,
+        'refresh_token': credential.refresh_token,
+    }
+
+    save_to_storage(credential_data)
+
+    return client
 
 
 if __name__ == '__main__':
