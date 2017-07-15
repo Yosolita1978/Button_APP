@@ -1,4 +1,5 @@
 from __future__ import print_function
+import pdb
 import httplib2
 import os
 from secret import *
@@ -38,8 +39,8 @@ def get_credentials():
     Returns:
         Credentials, the obtained credential.
     """
-    home_dir = os.path.expanduser('~')
-    credential_dir = os.path.join(home_dir, '.credentials')
+    button_dir = os.path.dirname(os.path.realpath(__file__))
+    credential_dir = os.path.join(button_dir, '.credentials')
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
     credential_path = os.path.join(credential_dir,
@@ -58,7 +59,7 @@ def get_credentials():
     return credentials
 
 
-def get_locations():
+def get_next_event_location():
     """Shows basic usage of the Google Calendar API.
 
     Creates a Google Calendar API service object and outputs a string with the location of the next event in my calendar.
@@ -84,7 +85,7 @@ def get_locations():
     else:
         location = events[0]['location']
         if not location:
-            print('No upcoming locations found.')   
+            print('No upcoming locations found.')
         return location
 
 
@@ -98,13 +99,16 @@ def get_latitud_longitude(address):
     params = {'sensor': 'false', 'address': address}
     r = requests.get(url, params=params)
     results = r.json()['results']
-    location = results[0]['geometry']['location']
-    print(address)
-    print((location['lat'], location['lng']))
-    return (location['lat'], location['lng'])
+    if results:
+        location = results[0]['geometry']['location']
+        print(address)
+        print((location['lat'], location['lng']))
+        return (location['lat'], location['lng'])
+    else:
+        return None
 
 
-def get_geocodes_home():
+def get_home_coordinates():
     """Basic usage of the Google Maps requests.
 
     This function returns a tuple with the latitude and longitude of my home.
@@ -122,7 +126,7 @@ def get_geocodes_home():
 
 def load_from_storage():
 
-    with open("lyft_secret.json", 'r') as f:
+    with open(".credentials/lyft.json", 'r') as f:
         credential = json.loads(f.read())
 
     return credential
@@ -130,7 +134,7 @@ def load_from_storage():
 
 def save_to_storage(credential_data):
 
-    with open("lyft_secret.json", 'w') as f:
+    with open(".credentials/lyft.json", 'w') as f:
         f.write(json.dumps(credential_data))
 
 
@@ -141,11 +145,15 @@ def get_user_credentials_from_file():
     return OAuth2Credential(**credential)
 
 
-def get_user_credentials_from_oauth_flow():
+def get_user_credentials_from_oauth_flow(sandbox=True):
 
     PERMISSION_SCOPES = ['public', 'rides.read', 'offline', 'rides.request', 'profile']
 
-    auth_flow = AuthorizationCodeGrant(CLIENT_ID, CLIENT_SECRET, PERMISSION_SCOPES)
+    auth_flow = AuthorizationCodeGrant(
+        CLIENT_ID,
+        CLIENT_SECRET,
+        PERMISSION_SCOPES,
+        is_sandbox_mode=sandbox)
     auth_url = auth_flow.get_authorization_url()
     print(auth_url)
     redirect_url = raw_input("Please type here the redirect url: ")
@@ -156,13 +164,13 @@ def get_user_credentials_from_oauth_flow():
     return credential
 
 
-def get_lyft_client():
+def get_lyft_client(sandbox=True):
 
     try:
         credential = get_user_credentials_from_file()
 
     except IOError:
-        credential = get_user_credentials_from_oauth_flow()
+        credential = get_user_credentials_from_oauth_flow(sandbox)
 
     session = Session(oauth2credential=credential)
     client = LyftRidesClient(session)
@@ -185,42 +193,63 @@ def get_lyft_client():
     return client
 
 
-if __name__ == '__main__':
+def get_ride_type(lyft_client, start_coordinates):
+
+    start_latitude, start_longitude = start_coordinates
+    response = lyft_client.get_ride_types(start_latitude, start_longitude)
+    ride_types = response.json.get('ride_types')
+    lyft_type = ride_types[1]['ride_type']
+    return lyft_type
+
+
+def request_lyft_ride(lyft_client, start_coordinates, end_coordinates, ride_type):
+
+    start_latitude, start_longitude = start_coordinates
+    end_latitude, end_longitude = end_coordinates
+
+    response = lyft_client.request_ride(
+        ride_type=ride_type,
+        start_latitude=start_latitude,
+        start_longitude=start_longitude,
+        end_latitude=end_latitude,
+        end_longitude=end_longitude)
+
+    ride_details = response.json
+
+    lyft_id = ride_details['ride_id']
+    return lyft_id
+
+
+def call_a_ride(sandbox=True):
+
+    home_coordinates = get_home_coordinates()
+
+    next_event_location = get_next_event_location()
+    if not next_event_location:
+        message = "Sorry, your next event doesn't have an address. Please, check your calendar"
+        print(send_SMS(message))
+        return
+
+    next_event_coordinates = get_latitud_longitude(next_event_location)
+    if not next_event_coordinates:
+        message = "Sorry, your next event doesn't have a valid address."
+        print(send_SMS(message))
+        return
+
     try:
-        home = get_geocodes_home()
-        latitude_home = home[0]
-        longitude_home = home[1]
-
-        myclient = get_lyft_client()
-        response = myclient.get_ride_types(home[0], home[1])
-        ride_types = response.json.get('ride_types')
-        my_ride_type = ride_types[1]['ride_type']
-
-        next_event = get_locations()
-        if not next_event:
-            message = "Sorry, your next event doesn't have an address. Please, check you're calendar"
-            print(send_SMS(message))
-
-        else:
-            address = get_latitud_longitude(next_event)
-            final_latitud = address[0]
-            final_longitud = address[1]
-
-            response = myclient.request_ride(
-                ride_type=my_ride_type,
-                start_latitude=latitude_home,
-                start_longitude=longitude_home,
-                end_latitude=final_latitud,
-                end_longitude=final_longitud)
-
-            ride_details = response.json
-            lyft = ride_details['ride_type']
-            lyft_id = ride_details['ride_id']
-            message = "Your %s with the id %s has been authorized" % (lyft, lyft_id)
-            print(send_SMS(message))
+        my_client = get_lyft_client(sandbox)
+        ride_type = get_ride_type(my_client, home_coordinates)
+        ride_id = request_lyft_ride(my_client, home_coordinates, next_event_coordinates, ride_type)
 
     except ClientError:
         message = "The access token from lyft expired"
         print(send_SMS(message))
+        return
 
+    message = "Your %s with the id %s has been authorized" % (ride_type, ride_id)
+    print(send_SMS(message))
+
+
+if __name__ == '__main__':
+    call_a_ride(sandbox=False)
 

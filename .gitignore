@@ -3,3 +3,4 @@ client_secret.json
 secret.py
 *.pyc
 lyft_secret.json
+.credentials/
