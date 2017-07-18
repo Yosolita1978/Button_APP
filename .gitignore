@@ -4,3 +4,5 @@ secret.py
 *.pyc
 lyft_secret.json
 .credentials/
+.DS_Store
+button.zip
