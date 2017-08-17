@@ -117,11 +117,11 @@ def get_home_coordinates():
     """
 
     url = 'https://maps.googleapis.com/maps/api/geocode/json'
-    params = {'sensor': 'false', 'address': address_home}
+    params = {'sensor': 'false', 'address': ADDRESS_HOME}
     r = requests.get(url, params=params)
     results = r.json()['results']
     location = results[0]['geometry']['location']
-    print(address_home)
+    print(ADDRESS_HOME)
     print((location['lat'], location['lng']))
     return (location['lat'], location['lng'])
 
@@ -137,9 +137,7 @@ def load_from_storage(table_name):
     credential = credential['Item']
     credential.pop('serial_number')
     if table_name == 'LyftCredential':
-        credential['expires_in_seconds'] = int(credential['expires_in_seconds']) - int(time()) 
-        print('HERE the json came from storage')
-        print(credential)
+        credential['expires_in_seconds'] = int(credential['expires_in_seconds']) - int(time())
 
     return credential
 
@@ -218,7 +216,7 @@ def get_ride_type(lyft_client, start_coordinates):
     return lyft_type
 
 
-def request_lyft_ride(lyft_client, start_coordinates, end_coordinates, ride_type, cost_token=None):
+def request_lyft_ride(lyft_client, start_address, start_coordinates, end_address, end_coordinates, ride_type):
 
     start_latitude, start_longitude = start_coordinates
     end_latitude, end_longitude = end_coordinates
@@ -230,6 +228,7 @@ def request_lyft_ride(lyft_client, start_coordinates, end_coordinates, ride_type
         end_latitude=end_latitude,
         end_longitude=end_longitude)
 
+    cost_token = None
     cost_json = response.json
     if cost_json['cost_estimates'][0]['cost_token']:
         cost_token = cost_json['cost_estimates'][0]['cost_token']
@@ -238,8 +237,10 @@ def request_lyft_ride(lyft_client, start_coordinates, end_coordinates, ride_type
 
     response = lyft_client.request_ride(
         ride_type=ride_type,
+        start_address=start_address,
         start_latitude=start_latitude,
         start_longitude=start_longitude,
+        end_address=end_address,
         end_latitude=end_latitude,
         end_longitude=end_longitude,
         primetime_confirmation_token=cost_token)
@@ -269,7 +270,13 @@ def call_a_ride(sandbox=True):
     try:
         my_client = get_lyft_client(sandbox)
         ride_type = get_ride_type(my_client, home_coordinates)
-        ride_id = request_lyft_ride(my_client, home_coordinates, next_event_coordinates, ride_type)
+        ride_id = request_lyft_ride(
+            lyft_client=my_client, 
+            start_address=ADDRESS_HOME, 
+            start_coordinates=home_coordinates, 
+            end_address=next_event_location, 
+            end_coordinates=next_event_coordinates, 
+            ride_type=ride_type)
 
     except ClientError, e:
         print(e)
