@@ -230,8 +230,9 @@ def request_lyft_ride(lyft_client, start_address, start_coordinates, end_address
 
     cost_token = None
     cost_json = response.json
-    if cost_json['cost_estimates'][0]['cost_token']:
-        cost_token = cost_json['cost_estimates'][0]['cost_token']
+    #print(cost_json)
+    if cost_json['cost_estimates'][0]['primetime_confirmation_token']:
+        cost_token = cost_json['cost_estimates'][0]['primetime_confirmation_token']
 
     # return 0
 
