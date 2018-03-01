@@ -33,8 +33,8 @@ I'm using a number of APIs to work properly:
 * Google Calendar API
 * Google Maps Requests
 * Dynamodb (I'm using boto3 to work with the dynamoDB)
-* Lyft API (I'm using the lyft_rides lybrarie to work with the Lyft API)
-* Twilio API (I'm using the twilio.rest librarie to work with this API)
+* Lyft API (I'm using the lyft_rides libraries to work with the Lyft API)
+* Twilio API (I'm using the twilio.rest libraries to work with this API)
 
 ### Installation
 All the dependencies are listed in requirements.txt.
