@@ -103,8 +103,8 @@ def get_latitud_longitude(address):
     results = r.json()['results']
     if results:
         location = results[0]['geometry']['location']
-        print(address)
-        print((location['lat'], location['lng']))
+        # print(address)
+        # print((location['lat'], location['lng']))
         return (location['lat'], location['lng'])
     else:
         return None
@@ -121,8 +121,8 @@ def get_home_coordinates():
     r = requests.get(url, params=params)
     results = r.json()['results']
     location = results[0]['geometry']['location']
-    print(ADDRESS_HOME)
-    print((location['lat'], location['lng']))
+    # print(ADDRESS_HOME)
+    # print((location['lat'], location['lng']))
     return (location['lat'], location['lng'])
 
 
@@ -169,7 +169,7 @@ def get_user_credentials_from_oauth_flow(sandbox=True):
         PERMISSION_SCOPES,
         is_sandbox_mode=sandbox)
     auth_url = auth_flow.get_authorization_url()
-    print(auth_url)
+    # print(auth_url)
     redirect_url = raw_input("Please type here the redirect url: ")
 
     session = auth_flow.get_session(redirect_url)
