@@ -120,6 +120,8 @@ def get_home_coordinates():
     params = {'sensor': 'false', 'address': ADDRESS_HOME}
     r = requests.get(url, params=params)
     results = r.json()['results']
+    print(ADDRESS_HOME)
+    print(r.json())
     location = results[0]['geometry']['location']
     # print(ADDRESS_HOME)
     # print((location['lat'], location['lng']))
@@ -128,7 +130,7 @@ def get_home_coordinates():
 
 def load_from_storage(table_name):
 
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
     table = dynamodb.Table(table_name)
     credential = table.get_item(Key={'serial_number': SERIAL_NUMBER})
     if not 'Item' in credential:

@@ -1,0 +1,6 @@
+twilio==6.14.3
+boto3==1.7.31
+lyft-rides==0.2
+requests==2.18.4
+google-api-python-client==1.7.1
+oauth2client==4.1.2
